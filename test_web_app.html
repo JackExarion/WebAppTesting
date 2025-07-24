@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Test Web App</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <!-- QR Code Generator -->
+  <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+
+  <!-- Styling -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Registration Form</h2>
+    <form id="registrationForm">
+      <label for="textInput">ID Number</label>
+      <input type="text" id="textInput" name="textInput" required />
+
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" required />
+
+      <label for="courseStrand">Course/Strand</label>
+      <input type="text" id="courseStrand" name="courseStrand" required />
+
+      <label for="section">Year and Section</label>
+      <input type="text" id="section" name="section" required />
+
+      <label for="schoolYear">School Year</label>
+      <input type="text" id="schoolYear" name="schoolYear" required />
+
+      <button type="submit">Register</button>
+    </form>
+
+    <div id="qrcode"><label>Save QR Code or Screenshot</label></div>
+
+    <h3>Users List</h3>
+    <table id="tbl_users_list">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Course/Strand</th>
+          <th>Year and Section</th>
+          <th>School Year</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="crud-section">
+      <h3>Update or Delete User</h3>
+      <label for="updateUserId">User ID</label>
+      <input type="text" id="updateUserId" placeholder="Enter User ID" />
+
+      <label for="updateName">Name</label>
+      <input type="text" id="updateName" placeholder="Enter new Name" />
+
+      <label for="updateCourse">Course/Strand</label>
+      <input type="text" id="updateCourse" placeholder="Enter new Course/Strand" />
+
+      <label for="updateSection">Year and Section</label>
+      <input type="text" id="updateSection" placeholder="Enter new Year and Section" />
+
+      <label for="updateSchoolYear">School Year</label>
+      <input type="text" id="updateSchoolYear" placeholder="Enter new School Year" />
+
+      <button id="updateBtn">Update User</button>
+      <button id="deleteBtn">Delete User</button>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDd2hlVCfoZDvrl2o3GbGgVPNUKWiwZ86o",
+      authDomain: "testwebapp-b7fd5.firebaseapp.com",
+      projectId: "testwebapp-b7fd5",
+      storageBucket: "testwebapp-b7fd5.appspot.com",
+      messagingSenderId: "783724014512",
+      appId: "1:783724014512:web:d44c8f7c917beb999b8475",
+      measurementId: "G-3W44BDRN5Z",
+      databaseURL: "https://testwebapp-b7fd5-default-rtdb.firebaseio.com/"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const databaseRef = firebase.database().ref('data/');
+    const tblUsersBody = document.querySelector('#tbl_users_list tbody');
+
+    databaseRef.on('child_added', (snapshot) => {
+      const key = snapshot.key;
+      const data = snapshot.val();
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${key}</td>
+        <td>${data.Name}</td>
+        <td>${data.CourseStrand}</td>
+        <td>${data.Section}</td>
+        <td>${data.SchoolYear}</td>`;
+      tblUsersBody.appendChild(row);
+    });
+
+    document.getElementById('registrationForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const StudentID = document.getElementById('textInput').value.trim();
+      const Name = document.getElementById('name').value.trim();
+      const CourseStrand = document.getElementById('courseStrand').value.trim();
+      const Section = document.getElementById('section').value.trim();
+      const SchoolYear = document.getElementById('schoolYear').value.trim();
+
+      if (!StudentID || !Name || !CourseStrand || !Section || !SchoolYear) {
+        return alert('Please fill in all fields.');
+      }
+
+      const userData = { StudentID, Name, CourseStrand, Section, SchoolYear };
+      const updates = {};
+      updates['/data/' + StudentID] = userData;
+
+      firebase.database().ref().update(updates)
+        .then(() => {
+          alert('User registered successfully!');
+          generateQRCode(userData);
+          document.getElementById('registrationForm').reset();
+        })
+        .catch((error) => alert('Error: ' + error.message));
+    });
+
+    function generateQRCode(data) {
+      const text = `Student ID: ${data.StudentID}
+Name: ${data.Name}
+Course/Strand: ${data.CourseStrand}
+Year & Section: ${data.Section}
+School Year: ${data.SchoolYear}`;
+
+      const container = document.getElementById('qrcode');
+      container.innerHTML = '';
+      new QRCode(container, { text, width: 200, height: 200 });
+    }
+
+    document.getElementById('updateBtn').addEventListener('click', () => {
+      const StudentID = document.getElementById('updateUserId').value.trim();
+      const Name = document.getElementById('updateName').value.trim();
+      const CourseStrand = document.getElementById('updateCourse').value.trim();
+      const Section = document.getElementById('updateSection').value.trim();
+      const SchoolYear = document.getElementById('updateSchoolYear').value.trim();
+
+      if (!StudentID) return alert('Enter the User ID to update.');
+
+      const data = {};
+      if (Name) data.Name = Name;
+      if (CourseStrand) data.CourseStrand = CourseStrand;
+      if (Section) data.Section = Section;
+      if (SchoolYear) data.SchoolYear = SchoolYear;
+
+      data.StudentID = StudentID;
+
+      firebase.database().ref().child('data/' + StudentID).update(data)
+        .then(() => {
+          alert('User updated successfully!');
+          window.location.reload();
+        })
+        .catch((error) => alert('Error: ' + error.message));
+    });
+
+    document.getElementById('deleteBtn').addEventListener('click', () => {
+      const StudentID = document.getElementById('updateUserId').value.trim();
+      if (!StudentID) return alert('Enter the User ID to delete.');
+      if (!confirm(`Are you sure you want to delete user with ID: ${StudentID}?`)) return;
+
+      firebase.database().ref('/data/' + StudentID).remove()
+        .then(() => {
+          alert('User deleted successfully!');
+          window.location.reload();
+        })
+        .catch((error) => alert('Error: ' + error.message));
+    });
+  </script>
+</body>
+</html>
